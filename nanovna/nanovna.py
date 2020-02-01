@@ -9,7 +9,6 @@ import pylab as pl
 import scipy.signal as signal
 
 import time
-import struct
 
 VID = 0x0483 #1155
 PID = 0x5740 #22336
@@ -79,9 +78,6 @@ class NanoVNA:
     def set_strength(self, strength):
         if strength is not None:
             self.send_command("power %d\r" % strength)
-
-    def set_filter(self, filter):
-        self.filter = filter
 
     def fetch_data(self):
         result = ''
@@ -208,142 +204,34 @@ class NanoVNA:
             freqs = freqs[segment_length:]
         self.resume()
         return (array0, array1)
-    
-    def capture(self):
-        from PIL import Image
-        self.send_command("capture\r")
-        b = self.serial.read(320 * 240 * 2)
-        x = struct.unpack(">76800H", b)
-        # convert pixel format from 565(RGB) to 8888(RGBA)
-        arr = np.array(x, dtype=np.uint32)
-        arr = 0xFF000000 + ((arr & 0xF800) >> 8) + ((arr & 0x07E0) << 5) + ((arr & 0x001F) << 19)
-        return Image.frombuffer('RGBA', (320, 240), arr, 'raw', 'RGBA', 0, 1)
 
-    def logmag(self, x):
-        pl.grid(True)
-        pl.xlim(self.frequencies[0], self.frequencies[-1])
-        pl.plot(self.frequencies, 20*np.log10(np.abs(x)))
+# def plot_sample0(samp):
+#     N = min(len(samp), 256)
+#     fs = 48000
+#     pl.subplot(211)
+#     pl.grid()
+#     pl.plot(samp)
+#     pl.subplot(212)
+#     pl.grid()
+#     #pl.ylim((-50, 50))
+#     pl.psd(samp, N, window = pl.blackman(N), Fs=fs)
 
-    def linmag(self, x):
-        pl.grid(True)
-        pl.xlim(self.frequencies[0], self.frequencies[-1])
-        pl.plot(self.frequencies, np.abs(x))
-
-    def phase(self, x, unwrap=False):
-        pl.grid(True)
-        a = np.angle(x)
-        if unwrap:
-            a = np.unwrap(a)
-        else:
-            pl.ylim((-180,180))
-        pl.xlim(self.frequencies[0], self.frequencies[-1])
-        pl.plot(self.frequencies, np.rad2deg(a))
-
-    def delay(self, x):
-        pl.grid(True)
-        delay = -np.unwrap(np.angle(x))/ (2*np.pi*np.array(self.frequencies))
-        pl.xlim(self.frequencies[0], self.frequencies[-1])
-        pl.plot(self.frequencies, delay)
-
-    def groupdelay(self, x):
-        pl.grid(True)
-        gd = np.convolve(np.unwrap(np.angle(x)), [1,-1], mode='same')
-        pl.xlim(self.frequencies[0], self.frequencies[-1])
-        pl.plot(self.frequencies, gd)
-
-    def vswr(self, x):
-        pl.grid(True)
-        vswr = (1+np.abs(x))/(1-np.abs(x))
-        pl.xlim(self.frequencies[0], self.frequencies[-1])
-        pl.plot(self.frequencies, vswr)
-
-    def polar(self, x):
-        ax = pl.subplot(111, projection='polar')
-        ax.grid(True)
-        ax.set_ylim((0,1))
-        ax.plot(np.angle(x), np.abs(x))
-
-    def tdr(self, x):
-        pl.grid(True)
-        window = np.blackman(len(x))
-        NFFT = 256
-        td = np.abs(np.fft.ifft(window * x, NFFT))
-        time = 1 / (self.frequencies[1] - self.frequencies[0])
-        t_axis = np.linspace(0, time, NFFT)
-        pl.plot(t_axis, td)
-        pl.xlim(0, time)
-        pl.xlabel("time (s)")
-        pl.ylabel("magnitude")
-
-    def skrf_network(self, x):
-        import skrf as sk
-        n = sk.Network()
-        n.frequency = sk.Frequency.from_f(self.frequencies / 1e6, unit='mhz')
-        n.s = x
-        return n
-
-    def smith(self, x):
-        n = self.skrf_network(x)
-        n.plot_s_smith()
-        return n
-
-def plot_sample0(samp):
-    N = min(len(samp), 256)
-    fs = 48000
-    pl.subplot(211)
-    pl.grid()
-    pl.plot(samp)
-    pl.subplot(212)
-    pl.grid()
-    #pl.ylim((-50, 50))
-    pl.psd(samp, N, window = pl.blackman(N), Fs=fs)
-
-def plot_sample(ref, samp):
-    N = min(len(samp), 256)
-    fs = 48000
-    pl.subplot(211)
-    pl.grid()
-    pl.plot(ref)
-    pl.plot(samp)
-    pl.subplot(212)
-    pl.grid()
-    #pl.ylim((-50, 50))
-    pl.psd(ref, N, window = pl.blackman(N), Fs=fs)
-    pl.psd(samp, N, window = pl.blackman(N), Fs=fs)
+# def plot_sample(ref, samp):
+#     N = min(len(samp), 256)
+#     fs = 48000
+#     pl.subplot(211)
+#     pl.grid()
+#     pl.plot(ref)
+#     pl.plot(samp)
+#     pl.subplot(212)
+#     pl.grid()
+#     #pl.ylim((-50, 50))
+#     pl.psd(ref, N, window = pl.blackman(N), Fs=fs)
+#     pl.psd(samp, N, window = pl.blackman(N), Fs=fs)
 
 if __name__ == '__main__':
     from optparse import OptionParser
     parser = OptionParser(usage="%prog: [options]")
-    parser.add_option("-r", "--raw", dest="rawwave",
-                      type="int", default=None,
-                      help="plot raw waveform", metavar="RAWWAVE")
-    parser.add_option("-p", "--plot", dest="plot",
-                      action="store_true", default=False,
-                      help="plot rectanglar", metavar="PLOT")
-    parser.add_option("-s", "--smith", dest="smith",
-                      action="store_true", default=False,
-                      help="plot smith chart", metavar="SMITH")
-    parser.add_option("-L", "--polar", dest="polar",
-                      action="store_true", default=False,
-                      help="plot polar chart", metavar="POLAR")
-    parser.add_option("-D", "--delay", dest="delay",
-                      action="store_true", default=False,
-                      help="plot delay", metavar="DELAY")
-    parser.add_option("-G", "--groupdelay", dest="groupdelay",
-                      action="store_true", default=False,
-                      help="plot groupdelay", metavar="GROUPDELAY")
-    parser.add_option("-W", "--vswr", dest="vswr",
-                      action="store_true", default=False,
-                      help="plot VSWR", metavar="VSWR")
-    parser.add_option("-H", "--phase", dest="phase",
-                      action="store_true", default=False,
-                      help="plot phase", metavar="PHASE")
-    parser.add_option("-U", "--unwrapphase", dest="unwrapphase",
-                      action="store_true", default=False,
-                      help="plot unwrapped phase", metavar="UNWRAPPHASE")
-    parser.add_option("-T", "--timedomain", dest="tdr",
-                      action="store_true", default=False,
-                      help="plot TDR", metavar="TDR")
     parser.add_option("-c", "--scan", dest="scan",
                       action="store_true", default=False,
                       help="scan by script", metavar="SCAN")
@@ -360,77 +248,36 @@ if __name__ == '__main__':
                       help="port", metavar="PORT")
     parser.add_option("-d", "--dev", dest="device",
                       help="device node", metavar="DEV")
-    parser.add_option("-v", "--verbose",
-                      action="store_true", dest="verbose", default=False,
-                      help="verbose output")
-    parser.add_option("-C", "--capture", dest="capture",
-                      help="capture current display to FILE", metavar="FILE")
-    parser.add_option("-e", dest="command", action="append",
-                      help="send raw command", metavar="COMMAND")
-    parser.add_option("-o", dest="save",
-                      help="write touch stone file", metavar="SAVE")
     (opt, args) = parser.parse_args()
 
     nv = NanoVNA(opt.device or getport())
 
-    if opt.command:
-        for c in opt.command:
-            nv.send_command(c + "\r")
-
-    if opt.capture:
-        print("capturing...")
-        img = nv.capture()
-        img.save(opt.capture)
-        exit(0)
-
     nv.set_port(opt.port)
-    if opt.rawwave is not None:
-        samp = nv.fetch_buffer(buffer = opt.rawwave)
-        print(len(samp))
-        if opt.rawwave == 1 or opt.rawwave == 2:
-            plot_sample0(samp)
-            print(np.average(samp))
-        else:
-            plot_sample(samp[0::2], samp[1::2])
-            print(np.average(samp[0::2]))
-            print(np.average(samp[1::2]))
-            print(np.average(samp[0::2] * samp[1::2]))
-        pl.show()
-        exit(0)
+    # TODO(khoi): Use this as example for sending samples
+    # if opt.rawwave is not None:
+    #     samp = nv.fetch_buffer(buffer = opt.rawwave)
+    #     print(len(samp))
+    #     if opt.rawwave == 1 or opt.rawwave == 2:
+    #         plot_sample0(samp)
+    #         print(np.average(samp))
+    #     else:
+    #         plot_sample(samp[0::2], samp[1::2])
+    #         print(np.average(samp[0::2]))
+    #         print(np.average(samp[1::2]))
+    #         print(np.average(samp[0::2] * samp[1::2]))
+    #     pl.show()
+    #     exit(0)
+
     if opt.start or opt.stop or opt.points:
         nv.set_frequencies(opt.start, opt.stop, opt.points)
-    plot = opt.phase or opt.plot or opt.vswr or opt.delay or opt.groupdelay or opt.smith or opt.unwrapphase or opt.polar or opt.tdr
-    if plot or opt.save:
-        p = int(opt.port) if opt.port else 0
-        if opt.scan or opt.points > 101:
-            s = nv.scan()
-            s = s[p]
-        else:
-            if opt.start or opt.stop:
-                nv.set_sweep(opt.start, opt.stop)
-            nv.fetch_frequencies()
-            s = nv.data(p)
-            nv.fetch_frequencies()
-    if opt.save:
-        n = nv.skrf_network(s)
-        n.write_touchstone(opt.save)
-    if opt.smith:
-        nv.smith(s)
-    if opt.polar:
-        nv.polar(s)
-    if opt.plot:
-        nv.logmag(s)
-    if opt.phase:
-        nv.phase(s)
-    if opt.unwrapphase:
-        nv.phase(s, unwrap=True)
-    if opt.delay:
-        nv.delay(s)
-    if opt.groupdelay:
-        nv.groupdelay(s)
-    if opt.vswr:
-        nv.vswr(s)
-    if opt.tdr:
-        nv.tdr(s)
-    if plot:
-        pl.show()
+
+    p = int(opt.port) if opt.port else 0
+    if opt.scan or opt.points > 101:
+        s = nv.scan()
+        s = s[p]
+    else:
+        if opt.start or opt.stop:
+            nv.set_sweep(opt.start, opt.stop)
+        nv.fetch_frequencies()
+        s = nv.data(p)
+        nv.fetch_frequencies()
