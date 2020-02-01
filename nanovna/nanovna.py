@@ -2,10 +2,14 @@
 # taken from https://github.com/ttrftech/NanoVNA/blob/master/python/nanovna.py
 
 import serial
+from serial.tools import list_ports
+
 import numpy as np
 import pylab as pl
+import scipy.signal as signal
+
+import time
 import struct
-from serial.tools import list_ports
 
 VID = 0x0483 #1155
 PID = 0x5740 #22336
@@ -270,14 +274,6 @@ class NanoVNA:
         pl.xlim(0, time)
         pl.xlabel("time (s)")
         pl.ylabel("magnitude")
-
-    def smithd3(self, x):
-        import mpld3
-        import twoport as tp
-        fig, ax = pl.subplots()
-        sc = tp.SmithChart(show_cursor=True, labels=True, ax=ax)
-        sc.plot_s_param(a)
-        mpld3.display(fig)
 
     def skrf_network(self, x):
         import skrf as sk
