@@ -5,7 +5,6 @@ import serial
 from serial.tools import list_ports
 
 import numpy as np
-import pylab as pl
 import scipy.signal as signal
 
 import time
