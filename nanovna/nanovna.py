@@ -96,6 +96,7 @@ class NanoVNA:
         return result
 
     def fetch_buffer(self, freq = None, buffer = 0):
+        # TODO(khoi): Make sure that the fw we use still support dump cmd
         self.send_command("dump %d\r" % buffer)
         data = self.fetch_data()
         x = []
