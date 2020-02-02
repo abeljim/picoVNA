@@ -818,7 +818,9 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
     // turn on bt and its advertisting
-    system("echo 'power on\ndiscoverable on \nquit' | bluetoothctl");
+    // agent off \nagent DisplayOnly \ndefault-agent 
+    // TODO(khoi): Implement pin pairing when possible
+    system("echo '\npower on \ndiscoverable on \npairable on \nquit' | bluetoothctl");
     system("btmgmt advertising on");
 
 	if (dev_id == -1)
