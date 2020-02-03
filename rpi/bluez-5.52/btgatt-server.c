@@ -44,8 +44,11 @@
 #include "src/shared/gatt-db.h"
 #include "src/shared/gatt-server.h"
 
+#include "vna_service.h"
+
 #define UUID_GAP			0x1800
 #define UUID_GATT			0x1801
+
 #define UUID_HEART_RATE			0x180d
 #define UUID_HEART_RATE_MSRMT		0x2a37
 #define UUID_HEART_RATE_BODY		0x2a38
@@ -56,7 +59,6 @@
 #define PRLOG(...) \
 	do { \
 		printf(__VA_ARGS__); \
-		print_prompt(); \
 	} while (0)
 
 #ifndef MIN
@@ -72,8 +74,7 @@
 #define COLOR_BOLDGRAY	"\x1B[1;30m"
 #define COLOR_BOLDWHITE	"\x1B[1;37m"
 
-static const char test_device_name[] = "Very Long Test Device Name For Testing "
-				"ATT Protocol Operations On GATT Server";
+static const char device_name[] = "picoVNA";
 static bool verbose = false;
 
 struct server {
@@ -88,20 +89,8 @@ struct server {
 	uint16_t gatt_svc_chngd_handle;
 	bool svc_chngd_enabled;
 
-	uint16_t hr_handle;
-	uint16_t hr_msrmt_handle;
-	uint16_t hr_energy_expended;
-	bool hr_visible;
-	bool hr_msrmt_enabled;
-	int hr_ee_count;
-	unsigned int hr_timeout_id;
+    VNAService vna;
 };
-
-static void print_prompt(void)
-{
-	printf(COLOR_BLUE "[GATT server]" COLOR_OFF "# ");
-	fflush(stdout);
-}
 
 static void att_disconnect_cb(int err, void *user_data)
 {
@@ -272,127 +261,6 @@ done:
 	gatt_db_attribute_write_result(attrib, id, ecode);
 }
 
-static void hr_msrmt_ccc_read_cb(struct gatt_db_attribute *attrib,
-					unsigned int id, uint16_t offset,
-					uint8_t opcode, struct bt_att *att,
-					void *user_data)
-{
-	struct server *server = user_data;
-	uint8_t value[2];
-
-	value[0] = server->hr_msrmt_enabled ? 0x01 : 0x00;
-	value[1] = 0x00;
-
-	gatt_db_attribute_read_result(attrib, id, 0, value, 2);
-}
-
-static bool hr_msrmt_cb(void *user_data)
-{
-	struct server *server = user_data;
-	bool expended_present = !(server->hr_ee_count % 10);
-	uint16_t len = 2;
-	uint8_t pdu[4];
-	uint32_t cur_ee;
-
-	pdu[0] = 0x06;
-	pdu[1] = 90 + (rand() % 40);
-
-	if (expended_present) {
-		pdu[0] |= 0x08;
-		put_le16(server->hr_energy_expended, pdu + 2);
-		len += 2;
-	}
-
-	bt_gatt_server_send_notification(server->gatt,
-						server->hr_msrmt_handle,
-						pdu, len);
-
-
-	cur_ee = server->hr_energy_expended;
-	server->hr_energy_expended = MIN(UINT16_MAX, cur_ee + 10);
-	server->hr_ee_count++;
-
-	return true;
-}
-
-static void update_hr_msrmt_simulation(struct server *server)
-{
-	if (!server->hr_msrmt_enabled || !server->hr_visible) {
-		timeout_remove(server->hr_timeout_id);
-		return;
-	}
-
-	server->hr_timeout_id = timeout_add(1000, hr_msrmt_cb, server, NULL);
-}
-
-static void hr_msrmt_ccc_write_cb(struct gatt_db_attribute *attrib,
-					unsigned int id, uint16_t offset,
-					const uint8_t *value, size_t len,
-					uint8_t opcode, struct bt_att *att,
-					void *user_data)
-{
-	struct server *server = user_data;
-	uint8_t ecode = 0;
-
-	if (!value || len != 2) {
-		ecode = BT_ATT_ERROR_INVALID_ATTRIBUTE_VALUE_LEN;
-		goto done;
-	}
-
-	if (offset) {
-		ecode = BT_ATT_ERROR_INVALID_OFFSET;
-		goto done;
-	}
-
-	if (value[0] == 0x00)
-		server->hr_msrmt_enabled = false;
-	else if (value[0] == 0x01) {
-		if (server->hr_msrmt_enabled) {
-			PRLOG("HR Measurement Already Enabled\n");
-			goto done;
-		}
-
-		server->hr_msrmt_enabled = true;
-	} else
-		ecode = 0x80;
-
-	PRLOG("HR: Measurement Enabled: %s\n",
-				server->hr_msrmt_enabled ? "true" : "false");
-
-	update_hr_msrmt_simulation(server);
-
-done:
-	gatt_db_attribute_write_result(attrib, id, ecode);
-}
-
-static void hr_control_point_write_cb(struct gatt_db_attribute *attrib,
-					unsigned int id, uint16_t offset,
-					const uint8_t *value, size_t len,
-					uint8_t opcode, struct bt_att *att,
-					void *user_data)
-{
-	struct server *server = user_data;
-	uint8_t ecode = 0;
-
-	if (!value || len != 1) {
-		ecode = BT_ATT_ERROR_INVALID_ATTRIBUTE_VALUE_LEN;
-		goto done;
-	}
-
-	if (offset) {
-		ecode = BT_ATT_ERROR_INVALID_OFFSET;
-		goto done;
-	}
-
-	if (value[0] == 1) {
-		PRLOG("HR: Energy Expended value reset\n");
-		server->hr_energy_expended = 0;
-	}
-
-done:
-	gatt_db_attribute_write_result(attrib, id, ecode);
-}
-
 static void confirm_write(struct gatt_db_attribute *attr, int err,
 							void *user_data)
 {
@@ -481,68 +349,17 @@ static void populate_gatt_service(struct server *server)
 	gatt_db_service_set_active(service, true);
 }
 
-static void populate_hr_service(struct server *server)
-{
-	bt_uuid_t uuid;
-	struct gatt_db_attribute *service, *hr_msrmt, *body;
-	uint8_t body_loc = 1;  /* "Chest" */
-
-	/* Add Heart Rate Service */
-	bt_uuid16_create(&uuid, UUID_HEART_RATE);
-	service = gatt_db_add_service(server->db, &uuid, true, 8);
-	server->hr_handle = gatt_db_attribute_get_handle(service);
-
-	/* HR Measurement Characteristic */
-	bt_uuid16_create(&uuid, UUID_HEART_RATE_MSRMT);
-	hr_msrmt = gatt_db_service_add_characteristic(service, &uuid,
-						BT_ATT_PERM_NONE,
-						BT_GATT_CHRC_PROP_NOTIFY,
-						NULL, NULL, NULL);
-	server->hr_msrmt_handle = gatt_db_attribute_get_handle(hr_msrmt);
-
-	bt_uuid16_create(&uuid, GATT_CLIENT_CHARAC_CFG_UUID);
-	gatt_db_service_add_descriptor(service, &uuid,
-					BT_ATT_PERM_READ | BT_ATT_PERM_WRITE,
-					hr_msrmt_ccc_read_cb,
-					hr_msrmt_ccc_write_cb, server);
-
-	/*
-	 * Body Sensor Location Characteristic. Make reads obtain the value from
-	 * the database.
-	 */
-	bt_uuid16_create(&uuid, UUID_HEART_RATE_BODY);
-	body = gatt_db_service_add_characteristic(service, &uuid,
-						BT_ATT_PERM_READ,
-						BT_GATT_CHRC_PROP_READ,
-						NULL, NULL, server);
-	gatt_db_attribute_write(body, 0, (void *) &body_loc, sizeof(body_loc),
-							BT_ATT_OP_WRITE_REQ,
-							NULL, confirm_write,
-							NULL);
-
-	/* HR Control Point Characteristic */
-	bt_uuid16_create(&uuid, UUID_HEART_RATE_CTRL);
-	gatt_db_service_add_characteristic(service, &uuid,
-						BT_ATT_PERM_WRITE,
-						BT_GATT_CHRC_PROP_WRITE,
-						NULL, hr_control_point_write_cb,
-						server);
-
-	if (server->hr_visible)
-		gatt_db_service_set_active(service, true);
-}
-
 static void populate_db(struct server *server)
 {
 	populate_gap_service(server);
 	populate_gatt_service(server);
-	populate_hr_service(server);
+	populate_vna_service(&(server->vna), server->db);
 }
 
-static struct server *server_create(int fd, uint16_t mtu, bool hr_visible)
+static struct server *server_create(int fd, uint16_t mtu)
 {
 	struct server *server;
-	size_t name_len = strlen(test_device_name);
+	size_t name_len = strlen(device_name);
 
 	server = new0(struct server, 1);
 	if (!server) {
@@ -574,7 +391,7 @@ static struct server *server_create(int fd, uint16_t mtu, bool hr_visible)
 		goto fail;
 	}
 
-	memcpy(server->device_name, test_device_name, name_len);
+	memcpy(server->device_name, device_name, name_len);
 	server->device_name[name_len] = '\0';
 
 	server->fd = fd;
@@ -590,13 +407,13 @@ static struct server *server_create(int fd, uint16_t mtu, bool hr_visible)
 		goto fail;
 	}
 
-	server->hr_visible = hr_visible;
-
 	if (verbose) {
 		bt_att_set_debug(server->att, att_debug_cb, "att: ", NULL);
 		bt_gatt_server_set_debug(server->gatt, gatt_debug_cb,
 							"server: ", NULL);
 	}
+
+    init_vna_service(&(server->vna), server->gatt);
 
 	/* Random seed for generating fake Heart Rate measurements */
 	srand(time(NULL));
@@ -617,9 +434,11 @@ fail:
 
 static void server_destroy(struct server *server)
 {
-	timeout_remove(server->hr_timeout_id);
+    destroy_vna_service(&(server->vna));
+
 	bt_gatt_server_unref(server->gatt);
 	gatt_db_unref(server->db);
+    free(server->device_name);
 }
 
 static void usage(void)
@@ -734,7 +553,6 @@ int main(int argc, char *argv[])
 	int sec = BT_SECURITY_LOW;
 	uint8_t src_type = BDADDR_LE_PUBLIC;
 	uint16_t mtu = 0;
-	bool hr_visible = false;
 	struct server *server;
 
 	while ((opt = getopt_long(argc, argv, "+hvrs:t:m:i:",
@@ -745,9 +563,6 @@ int main(int argc, char *argv[])
 			return EXIT_SUCCESS;
 		case 'v':
 			verbose = true;
-			break;
-		case 'r':
-			hr_visible = true;
 			break;
 		case 's':
 			if (strcmp(optarg, "low") == 0)
@@ -838,15 +653,13 @@ int main(int argc, char *argv[])
 
 	mainloop_init();
 
-	server = server_create(fd, mtu, hr_visible);
+	server = server_create(fd, mtu);
 	if (!server) {
 		close(fd);
 		return EXIT_FAILURE;
 	}
 
 	printf("Running GATT server\n");
-
-	print_prompt();
 
 	mainloop_run_with_signal(signal_cb, NULL);
 
