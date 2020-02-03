@@ -1,3 +1,9 @@
+/**
+ * @file vna_device.h
+ * @author Khoi Trinh
+ * @brief Represent a vna usb device, used for sending/receiving data through com port
+ * 
+ */
 #ifndef _VNA_DEVICE_H
 #define _VNA_DEVICE_H
 
