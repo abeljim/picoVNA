@@ -46,9 +46,6 @@
 
 #include "vna_service.h"
 
-#define VNA_VID 0x0483
-#define VNA_PID 0x5740
-
 #define UUID_GAP			0x1800
 #define UUID_GATT			0x1801
 
@@ -77,6 +74,7 @@
 #define COLOR_BOLDGRAY	"\x1B[1;30m"
 #define COLOR_BOLDWHITE	"\x1B[1;37m"
 
+struct server *vna_gatt_server;
 static const char device_name[] = "picoVNA";
 static bool verbose = false;
 
@@ -444,33 +442,6 @@ static void server_destroy(struct server *server)
     free(server->device_name);
 }
 
-static void usage(void)
-{
-	printf("btgatt-server\n");
-	printf("Usage:\n\tbtgatt-server [options]\n");
-
-	printf("Options:\n"
-		"\t-i, --index <id>\t\tSpecify adapter index, e.g. hci0\n"
-		"\t-m, --mtu <mtu>\t\t\tThe ATT MTU to use\n"
-		"\t-s, --security-level <sec>\tSet security level (low|"
-								"medium|high)\n"
-		"\t-t, --type [random|public] \t The source address type\n"
-		"\t-v, --verbose\t\t\tEnable extra logging\n"
-		"\t-r, --heart-rate\t\tEnable Heart Rate service\n"
-		"\t-h, --help\t\t\tDisplay help\n");
-}
-
-static struct option main_options[] = {
-	{ "index",		1, 0, 'i' },
-	{ "mtu",		1, 0, 'm' },
-	{ "security-level",	1, 0, 's' },
-	{ "type",		1, 0, 't' },
-	{ "verbose",		0, 0, 'v' },
-	{ "heart-rate",		0, 0, 'r' },
-	{ "help",		0, 0, 'h' },
-	{ }
-};
-
 static int l2cap_le_att_listen_and_accept(bdaddr_t *src, int sec,
 							uint8_t src_type)
 {
@@ -547,141 +518,15 @@ static void signal_cb(int signum, void *user_data)
 	}
 }
 
-#include <libserialport.h>
-#include <stdio.h>
-#include <stdlib.h>
-
-int main(int argc, char *argv[])
+bool init_vna_bluetooth()
 {
-	struct sp_port **port_list;
-	struct sp_port *vna_port = NULL;
-
-	if (sp_list_ports(&port_list) != SP_OK) {
-		printf("sp_list_ports() failed!\n");
-		return EXIT_FAILURE;
-	}
-
-	for (int i = 0; port_list[i] != NULL; i++) {
-		struct sp_port *port = port_list[i];
-        int vid, pid;
-
-		/* Get the name of the port. */
-		if(SP_OK == sp_get_port_usb_vid_pid(port, &vid, &pid))
-        {
-            if((VNA_VID == vid) && (VNA_VID == pid))
-            {
-                printf("found vna\n");
-                sp_copy_port(port, &vna_port);
-            }
-        }
-	}
-
-	sp_free_port_list(port_list);
-
-    if(NULL == vna_port)
-    {
-        printf("can't find vna\n");
-        return EXIT_FAILURE;
-    }
-
-    char cmd[] = "scan";
-    if(sp_blocking_write(vna_port, cmd, sizeof(cmd) / sizeof(char), 0) < 0)
-    {
-        sp_free_port(vna_port);
-        printf("error writing to vna\n");
-        return EXIT_FAILURE;
-    }
-
-    sp_free_port(vna_port);
-
-    return EXIT_SUCCESS;
-
-	int opt;
 	bdaddr_t src_addr;
 	int dev_id = -1;
 	int fd;
 	int sec = BT_SECURITY_LOW;
 	uint8_t src_type = BDADDR_LE_PUBLIC;
 	uint16_t mtu = 0;
-	struct server *server;
 
-	while ((opt = getopt_long(argc, argv, "+hvrs:t:m:i:",
-						main_options, NULL)) != -1) {
-		switch (opt) {
-		case 'h':
-			usage();
-			return EXIT_SUCCESS;
-		case 'v':
-			verbose = true;
-			break;
-		case 's':
-			if (strcmp(optarg, "low") == 0)
-				sec = BT_SECURITY_LOW;
-			else if (strcmp(optarg, "medium") == 0)
-				sec = BT_SECURITY_MEDIUM;
-			else if (strcmp(optarg, "high") == 0)
-				sec = BT_SECURITY_HIGH;
-			else {
-				fprintf(stderr, "Invalid security level\n");
-				return EXIT_FAILURE;
-			}
-			break;
-		case 't':
-			if (strcmp(optarg, "random") == 0)
-				src_type = BDADDR_LE_RANDOM;
-			else if (strcmp(optarg, "public") == 0)
-				src_type = BDADDR_LE_PUBLIC;
-			else {
-				fprintf(stderr,
-					"Allowed types: random, public\n");
-				return EXIT_FAILURE;
-			}
-			break;
-		case 'm': {
-			int arg;
-
-			arg = atoi(optarg);
-			if (arg <= 0) {
-				fprintf(stderr, "Invalid MTU: %d\n", arg);
-				return EXIT_FAILURE;
-			}
-
-			if (arg > UINT16_MAX) {
-				fprintf(stderr, "MTU too large: %d\n", arg);
-				return EXIT_FAILURE;
-			}
-
-			mtu = (uint16_t) arg;
-			break;
-		}
-		case 'i':
-			dev_id = hci_devid(optarg);
-			if (dev_id < 0) {
-				perror("Invalid adapter");
-				return EXIT_FAILURE;
-			}
-
-			break;
-		default:
-			fprintf(stderr, "Invalid option: %c\n", opt);
-			return EXIT_FAILURE;
-		}
-	}
-
-	argc -= optind;
-	argv -= optind;
-	optind = 0;
-
-	if (argc) {
-		usage();
-		return EXIT_SUCCESS;
-	}
-
-    if(geteuid() != 0)
-    {
-        printf("Program needs to be run as root");
-        return EXIT_FAILURE;
-    }
     // turn on bt and its advertisting
     // agent off \nagent DisplayOnly \ndefault-agent 
     // TODO(khoi): Implement pin pairing when possible
@@ -692,30 +537,31 @@ int main(int argc, char *argv[])
 		bacpy(&src_addr, BDADDR_ANY);
 	else if (hci_devba(dev_id, &src_addr) < 0) {
 		perror("Adapter not available");
-		return EXIT_FAILURE;
+		return false;
 	}
 
 	fd = l2cap_le_att_listen_and_accept(&src_addr, sec, src_type);
 	if (fd < 0) {
 		fprintf(stderr, "Failed to accept L2CAP ATT connection\n");
-		return EXIT_FAILURE;
+		return false;
 	}
 
 	mainloop_init();
 
-	server = server_create(fd, mtu);
-	if (!server) {
+	vna_gatt_server = server_create(fd, mtu);
+	if (!vna_gatt_server) {
 		close(fd);
-		return EXIT_FAILURE;
+		return false;
 	}
 
+    return true;
+}
+
+void run_vna_bluetooth()
+{
 	printf("Running GATT server\n");
 
 	mainloop_run_with_signal(signal_cb, NULL);
 
-	printf("\n\nShutting down...\n");
-
-	server_destroy(server);
-
-	return EXIT_SUCCESS;
+	server_destroy(vna_gatt_server);
 }

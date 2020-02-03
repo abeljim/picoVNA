@@ -15,4 +15,4 @@ fi
 pi_ssh="pi@${pi_addr}"
 ssh -t ${pi_ssh} 'rm -rf ~/rpi' 
 scp -r  ../rpi ${pi_ssh}:~
-ssh -t ${pi_ssh} 'cd ~/rpi/bluez-5.52 && make && sudo ./gatt_server' 
+ssh -t ${pi_ssh} 'cd ~/rpi && make && sudo ./rpi_vna' 

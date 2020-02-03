@@ -1,3 +1,11 @@
+/**
+ * @file vna_service.h
+ * @brief custom BLE service for the vna
+ * 
+ * @copyright Copyright (c) 2020
+ * 
+ */
+
 #ifndef _VNA_SERVICE_H
 #define _VNA_SERVICE_H
 
