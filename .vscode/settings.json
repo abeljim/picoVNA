@@ -1,0 +1,17 @@
+{
+    "files.associations": {
+        "*.cu": "c",
+        "*.tdd": "makefile",
+        "*.cfg": "tcl",
+        "*.svd": "xml",
+        "*.emProject": "xml",
+        "*.emSession": "xml",
+        "*.hpp": "cpp",
+        "*.ks": "shellscript",
+        "*.rasi": "css",
+        "*.in": "cmake",
+        "conanfile.txt": "toml",
+        "gatt-db.h": "c",
+        "libserialport.h": "c"
+    }
+}

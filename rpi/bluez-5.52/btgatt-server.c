@@ -46,6 +46,9 @@
 
 #include "vna_service.h"
 
+#define VNA_VID 0x0483
+#define VNA_PID 0x5740
+
 #define UUID_GAP			0x1800
 #define UUID_GATT			0x1801
 
@@ -544,8 +547,55 @@ static void signal_cb(int signum, void *user_data)
 	}
 }
 
+#include <libserialport.h>
+#include <stdio.h>
+#include <stdlib.h>
+
 int main(int argc, char *argv[])
 {
+	struct sp_port **port_list;
+	struct sp_port *vna_port = NULL;
+
+	if (sp_list_ports(&port_list) != SP_OK) {
+		printf("sp_list_ports() failed!\n");
+		return EXIT_FAILURE;
+	}
+
+	for (int i = 0; port_list[i] != NULL; i++) {
+		struct sp_port *port = port_list[i];
+        int vid, pid;
+
+		/* Get the name of the port. */
+		if(SP_OK == sp_get_port_usb_vid_pid(port, &vid, &pid))
+        {
+            if((VNA_VID == vid) && (VNA_VID == pid))
+            {
+                printf("found vna\n");
+                sp_copy_port(port, &vna_port);
+            }
+        }
+	}
+
+	sp_free_port_list(port_list);
+
+    if(NULL == vna_port)
+    {
+        printf("can't find vna\n");
+        return EXIT_FAILURE;
+    }
+
+    char cmd[] = "scan";
+    if(sp_blocking_write(vna_port, cmd, sizeof(cmd) / sizeof(char), 0) < 0)
+    {
+        sp_free_port(vna_port);
+        printf("error writing to vna\n");
+        return EXIT_FAILURE;
+    }
+
+    sp_free_port(vna_port);
+
+    return EXIT_SUCCESS;
+
 	int opt;
 	bdaddr_t src_addr;
 	int dev_id = -1;

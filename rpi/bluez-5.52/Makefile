@@ -32,7 +32,7 @@ CFLAGS := -std=c99 -I.
 # C/C++ flags
 CPPFLAGS := -g -Wall
 # linker flags
-LDFLAGS := -L . -lbluetooth -lshared-mainloop -lbluetooth-internal
+LDFLAGS := -L . -lbluetooth -lshared-mainloop -lbluetooth-internal -lserialport
 # linker libs
 LDLIBS:=
 # flags required for dependency generation; passed to compilers
