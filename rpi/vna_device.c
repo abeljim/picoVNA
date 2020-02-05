@@ -62,13 +62,16 @@ bool send_cmd_vna_device(VNADevice* vna, const char* cmd)
 {
     const size_t temp_cmd_size = strlen(cmd) + 2;
     char* temp_cmd = (char*)malloc(temp_cmd_size);
-    snprintf(temp_cmd, temp_cmd_size - 1,"%s\r", cmd);
+
+    snprintf(temp_cmd, temp_cmd_size, "%s\r", cmd);
     if(sp_blocking_write(vna->port, temp_cmd, temp_cmd_size, 0) < 0)
     {
         printf("error writing to vna\n");
+        free(temp_cmd);
         return false;
     }
     sp_drain(vna->port);
+    free(temp_cmd);
     return true;
 }
 
