@@ -18,14 +18,16 @@ int main()
         return EXIT_FAILURE;
     }
 
+    // TODO(khoi): Investigate command delay
     VNADevice vna_dev;
     if(!init_vna_device(&vna_dev))
     {
+        // TODO(khoi): Change error handling here
         destroy_vna_device(&vna_dev);
         return EXIT_FAILURE;
     }
 
-    if(!init_vna_bluetooth())
+    if(!init_vna_bluetooth(&vna_dev))
     {
         return EXIT_FAILURE;
     }

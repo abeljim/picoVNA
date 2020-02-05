@@ -35,7 +35,7 @@ static void vna_cmd_read_cb(struct gatt_db_attribute *attrib,
 	VNAService *vna = user_data;
 	uint8_t error = 0;
 	size_t len = 0;
-	const uint8_t *value = NULL;
+	const char *value = NULL;
 
 	len = vna->cmd_len;
 
@@ -75,22 +75,24 @@ static void vna_cmd_write_cb(struct gatt_db_attribute *attrib,
 	}
 
 	if (offset + len != vna->cmd_len) {
-		uint8_t *name;
+		char *temp_cmd;
 
-		name = realloc(vna->cmd, offset + len);
-		if (!name) {
+		temp_cmd = realloc(vna->cmd, offset + len + 1);
+		if (!temp_cmd) {
 			error = BT_ATT_ERROR_INSUFFICIENT_RESOURCES;
 			goto done;
 		}
 
-		vna->cmd = name;
+		vna->cmd = temp_cmd;
 		vna->cmd_len = offset + len;
+        temp_cmd[offset + len] = '\0';
 	}
 
 	if (value)
+    {
 		memcpy(vna->cmd + offset, value, len);
-    
-    // TODO(khoi): write cmd to nanoVNA here
+        send_cmd_vna_device(vna->vna_dev, vna->cmd);
+    }
 
 done:
 	gatt_db_attribute_write_result(attrib, id, error);
@@ -188,13 +190,15 @@ done:
 	gatt_db_attribute_write_result(attrib, id, ecode);
 }
 
-void init_vna_service(VNAService *vna, struct bt_gatt_server* gatt)
+void init_vna_service(VNAService *vna, struct bt_gatt_server* gatt, VNADevice* vna_dev)
 {
     vna->gatt = gatt;
 
     vna->cmd = NULL;
     vna->cmd_len = 0;
     vna->cmd_data_enabled = false;
+
+    vna->vna_dev = vna_dev;
 }
 
 void destroy_vna_service(VNAService *vna)

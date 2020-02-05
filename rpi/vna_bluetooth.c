@@ -45,6 +45,7 @@
 #include "src/shared/gatt-server.h"
 
 #include "vna_service.h"
+#include "vna_device.h"
 
 #define UUID_GAP			0x1800
 #define UUID_GATT			0x1801
@@ -357,7 +358,7 @@ static void populate_db(struct server *server)
 	populate_vna_service(&(server->vna), server->db);
 }
 
-static struct server *server_create(int fd, uint16_t mtu)
+static struct server *server_create(int fd, uint16_t mtu, VNADevice* vna_dev)
 {
 	struct server *server;
 	size_t name_len = strlen(device_name);
@@ -414,7 +415,7 @@ static struct server *server_create(int fd, uint16_t mtu)
 							"server: ", NULL);
 	}
 
-    init_vna_service(&(server->vna), server->gatt);
+    init_vna_service(&(server->vna), server->gatt, vna_dev);
 
 	/* Random seed for generating fake Heart Rate measurements */
 	srand(time(NULL));
@@ -518,7 +519,7 @@ static void signal_cb(int signum, void *user_data)
 	}
 }
 
-bool init_vna_bluetooth()
+bool init_vna_bluetooth(VNADevice* vna_dev)
 {
 	bdaddr_t src_addr;
 	int dev_id = -1;
@@ -548,7 +549,7 @@ bool init_vna_bluetooth()
 
 	mainloop_init();
 
-	vna_gatt_server = server_create(fd, mtu);
+	vna_gatt_server = server_create(fd, mtu, vna_dev);
 	if (!vna_gatt_server) {
 		close(fd);
 		return false;
