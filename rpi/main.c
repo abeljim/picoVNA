@@ -7,33 +7,43 @@
 #include <unistd.h>
 #include <errno.h>
 
+#define USB_ONLY
+
+#ifndef USB_ONLY
 #include "vna_bluetooth.h"
+#endif
 #include "vna_device.h"
 
 int main()
 {
-    if(geteuid() != 0)
+    #ifndef USB_ONLY
     {
-        printf("Program needs to be run as root");
-        return EXIT_FAILURE;
+        if(geteuid() != 0)
+        {
+            printf("Program needs to be run as root");
+            return EXIT_FAILURE;
+        }
     }
+    #endif
 
     // TODO(khoi): Investigate command delay
     VNADevice vna_dev;
     if(!init_vna_device(&vna_dev))
     {
-        // TODO(khoi): Change error handling here
-        destroy_vna_device(&vna_dev);
         return EXIT_FAILURE;
     }
 
-    if(!init_vna_bluetooth(&vna_dev))
+    #ifndef USB_ONLY
     {
-        return EXIT_FAILURE;
-    }
+        if(!init_vna_bluetooth(&vna_dev))
+        {
+            return EXIT_FAILURE;
+        }
 
-    // main loop of program
-    run_vna_bluetooth();
+        // main loop of program
+        run_vna_bluetooth();
+    }
+    #endif
 
     printf("\n\nShutting down...\n");
 
