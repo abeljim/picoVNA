@@ -6,8 +6,9 @@
 #include <getopt.h>
 #include <unistd.h>
 #include <errno.h>
+#include <assert.h>
 
-#define USB_ONLY
+// #define USB_ONLY
 
 #ifndef USB_ONLY
 #include "vna_bluetooth.h"
@@ -20,7 +21,7 @@ int main()
     {
         if(geteuid() != 0)
         {
-            printf("Program needs to be run as root");
+            printf("Program needs to be run as root\n");
             return EXIT_FAILURE;
         }
     }
@@ -45,7 +46,7 @@ int main()
     }
     #endif
 
-    printf("\n\nShutting down...\n");
+    printf("\nShutting down...\n");
 
     destroy_vna_device(&vna_dev);
 }

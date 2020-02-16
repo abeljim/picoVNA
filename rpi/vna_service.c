@@ -6,6 +6,8 @@
 #include <time.h>
 #include <stdlib.h>
 #include <getopt.h>
+#include <string.h>
+#include <assert.h>
 #include <unistd.h>
 #include <errno.h>
 
@@ -48,7 +50,7 @@ static void vna_cmd_read_cb(struct gatt_db_attribute *attrib,
 	value = len ? &vna->cmd[offset] : NULL;
 
 done:
-	gatt_db_attribute_read_result(attrib, id, error, value, len);
+	gatt_db_attribute_read_result(attrib, id, error, (uint8_t*)value, len);
 }
 
 static void vna_cmd_write_cb(struct gatt_db_attribute *attrib,
@@ -114,19 +116,18 @@ static void vna_cmd_ext_prop_read_cb(struct gatt_db_attribute *attrib,
 static bool vna_data_cb(void *user_data)
 {
 	VNAService *vna = user_data;
-	uint8_t pdu[6];
+    char* buf;
+    size_t count;
 
-    // TODO(khoi): Read data from nanoVNA here
-	pdu[0] = 0x06;
-	pdu[1] = 90 + (rand() % 40);
-	pdu[2] = 90 + (rand() % 40);
-	pdu[3] = 90 + (rand() % 40);
-	pdu[4] = 90 + (rand() % 40);
-	pdu[5] = 90 + (rand() % 40);
+    read_data_vna_device(vna->vna_dev, &buf, &count);
 
-	bt_gatt_server_send_notification(vna->gatt,
-						vna->cmd_data_handle,
-						pdu, sizeof(pdu) / sizeof(pdu[0]));
+    if(count)
+    {
+        bt_gatt_server_send_notification(vna->gatt,
+                            vna->cmd_data_handle,
+                            (uint8_t*)buf, count);
+        free(buf);
+    }
 
 	return true;
 }
