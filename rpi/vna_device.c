@@ -86,7 +86,6 @@ bool send_cmd_vna_device(VNADevice* vna, const char* cmd)
 
 void read_data_vna_device(VNADevice* vna, char **buf, size_t* count)
 {
-    sleep(1);
     if(!sp_input_waiting(vna->port))
     {
         *count = 0;
