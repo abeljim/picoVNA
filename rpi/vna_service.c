@@ -25,6 +25,8 @@
 #include "src/shared/gatt-db.h"
 #include "src/shared/gatt-server.h"
 
+#include "vna_bluetooth_info.h"
+
 #define UUID_VNA_SERVICE	"e9d25159-99bb-4c07-8094-8262f45ae3b6"
 #define UUID_VNA_CMD	    "3033d8d7-9f64-4c89-87d0-0a584bc48da0"
 #define UUID_VNA_DATA		"fe4d098a-e8c3-4504-8d47-b07089b5e6e0"
@@ -123,6 +125,10 @@ static bool vna_data_cb(void *user_data)
 
     if(count)
     {
+        if(count > BT_RPI_MAX_BYTE_PER_NOTIF)
+        {
+            printf("WARNINGS: vna data too big for notif\n");
+        }
         bt_gatt_server_send_notification(vna->gatt,
                             vna->cmd_data_handle,
                             (uint8_t*)buf, count);

@@ -46,6 +46,7 @@
 
 #include "vna_service.h"
 #include "vna_device.h"
+#include "vna_bluetooth_info.h"
 
 #define UUID_GAP			0x1800
 #define UUID_GATT			0x1801
@@ -526,10 +527,8 @@ bool init_vna_bluetooth(VNADevice* vna_dev)
 	int fd;
 	int sec = BT_SECURITY_LOW;
 	uint8_t src_type = BDADDR_LE_PUBLIC;
-	uint16_t mtu = 0;
 
     // turn on bt and its advertisting
-    // agent off \nagent DisplayOnly \ndefault-agent 
     // TODO(khoi): Implement pin pairing when possible
     system("echo '\npower on \ndiscoverable on \npairable on \nquit' | bluetoothctl");
     system("btmgmt advertising on");
@@ -549,7 +548,7 @@ bool init_vna_bluetooth(VNADevice* vna_dev)
 
 	mainloop_init();
 
-	vna_gatt_server = server_create(fd, mtu, vna_dev);
+	vna_gatt_server = server_create(fd, BT_RPI_MTU, vna_dev);
 	if (!vna_gatt_server) {
 		close(fd);
 		return false;
