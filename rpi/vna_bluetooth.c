@@ -51,11 +51,6 @@
 #define UUID_GAP			0x1800
 #define UUID_GATT			0x1801
 
-#define UUID_HEART_RATE			0x180d
-#define UUID_HEART_RATE_MSRMT		0x2a37
-#define UUID_HEART_RATE_BODY		0x2a38
-#define UUID_HEART_RATE_CTRL		0x2a39
-
 #define ATT_CID 4
 
 #define PRLOG(...) \
@@ -418,10 +413,6 @@ static struct server *server_create(int fd, uint16_t mtu, VNADevice* vna_dev)
 
     init_vna_service(&(server->vna), server->gatt, vna_dev);
 
-	/* Random seed for generating fake Heart Rate measurements */
-	srand(time(NULL));
-
-	/* bt_gatt_server already holds a reference */
 	populate_db(server);
 
 	return server;
