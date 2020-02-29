@@ -1,11 +1,9 @@
 syntax = "proto3";
 
-option objc_class_prefix = "HLW";
-
 package picogrpc;
 
 service PicoGrpc {
-  rpc RequestData (DataRequest) returns (DataReply) {}
+    rpc RequestData (DataRequest) returns (DataReply) {}
 }
 
 message DataPoint {
