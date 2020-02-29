@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+option objc_class_prefix = "HLW";
+
+package picogrpc;
+
+service PicoGrpc {
+  rpc RequestData (DataRequest) returns (DataReply) {}
+}
+
+message DataPoint {
+    float real = 1;
+    float im = 2;
+}
+
+message DataRequest {}
+
+message DataReply {
+    // s11 data
+    repeated DataPoint data = 1;
+}
