@@ -96,6 +96,23 @@ static void vna_cmd_write_cb(struct gatt_db_attribute *attrib,
     {
 		memcpy(vna->cmd + offset, value, len);
         send_cmd_vna_device(vna->vna_dev, vna->cmd);
+
+        char* buf;
+        size_t count;
+
+        read_data_vna_device(vna->vna_dev, &buf, &count);
+
+        if(count)
+        {
+            if(count > BT_RPI_MAX_BYTE_PER_NOTIF)
+            {
+                printf("WARNINGS: vna data too big for notif\n");
+            }
+            bt_gatt_server_send_notification(vna->gatt,
+                                vna->cmd_data_handle,
+                                (uint8_t*)buf, count);
+            free(buf);
+        }
     }
 
 done:
@@ -117,23 +134,24 @@ static void vna_cmd_ext_prop_read_cb(struct gatt_db_attribute *attrib,
 
 static bool vna_data_cb(void *user_data)
 {
-	VNAService *vna = user_data;
-    char* buf;
-    size_t count;
+    (void)(user_data);
+	// VNAService *vna = user_data;
+    // char* buf;
+    // size_t count;
 
-    read_data_vna_device(vna->vna_dev, &buf, &count);
+    // read_data_vna_device(vna->vna_dev, &buf, &count);
 
-    if(count)
-    {
-        if(count > BT_RPI_MAX_BYTE_PER_NOTIF)
-        {
-            printf("WARNINGS: vna data too big for notif\n");
-        }
-        bt_gatt_server_send_notification(vna->gatt,
-                            vna->cmd_data_handle,
-                            (uint8_t*)buf, count);
-        free(buf);
-    }
+    // if(count)
+    // {
+    //     if(count > BT_RPI_MAX_BYTE_PER_NOTIF)
+    //     {
+    //         printf("WARNINGS: vna data too big for notif\n");
+    //     }
+    //     bt_gatt_server_send_notification(vna->gatt,
+    //                         vna->cmd_data_handle,
+    //                         (uint8_t*)buf, count);
+    //     free(buf);
+    // }
 
 	return true;
 }
