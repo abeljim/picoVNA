@@ -164,7 +164,7 @@ class PicoGrpc(pico_vna_pb2_grpc.PicoGrpcServicer):
         global nv
         data = nv.fetch_array()
         # sometimes the fetch returns nothing
-        if data == []:
+        while data == []:
             data = nv.fetch_array()
         return pico_vna_pb2.DataReply(data=data)
 
