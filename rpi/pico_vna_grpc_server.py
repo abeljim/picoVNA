@@ -7,9 +7,8 @@ import pico_vna_pb2
 import pico_vna_pb2_grpc
 
 import serial
-import numpy as np
-import pylab as pl
-import struct
+# import numpy as np
+# import pylab as pl
 from serial.tools import list_ports
 
 VID = 0x0483 #1155
@@ -47,11 +46,6 @@ class NanoVNA:
     @property
     def frequencies(self):
         return self._frequencies
-
-    def set_frequencies(self, start = 1e6, stop = 900e6, points = None):
-        if points:
-            self.points = points
-        self._frequencies = np.linspace(start, stop, self.points)
 
     def open(self):
         if self.serial is None:
@@ -132,51 +126,30 @@ class NanoVNA:
         d = data.strip().split(' ')
         return (int(d[0])+int(d[1])*1.j)/REF_LEVEL
 
-    def reflect_coeff_from_rawwave(self, freq = None):
-        ref, samp = self.fetch_rawwave(freq)
-        refh = signal.hilbert(ref)
-        #x = np.correlate(refh, samp) / np.correlate(refh, refh)
-        #return x[0]
-        #return np.sum(refh*samp / np.abs(refh) / REF_LEVEL)
-        return np.average(refh*samp / np.abs(refh) / REF_LEVEL)
-
-    reflect_coeff = reflect_coeff_from_rawwave
-    gamma = reflect_coeff_from_rawwave
-    #gamma = fetch_gamma
-    coefficient = reflect_coeff
-
     def resume(self):
         self.send_command("resume\r")
     
     def pause(self):
         self.send_command("pause\r")
     
-    def scan_gamma0(self, port = None):
-        self.set_port(port)
-        return np.vectorize(self.gamma)(self.frequencies)
+    # def data(self, array = 0):
+    #     self.send_command("data %d\r" % array)
+    #     data = self.fetch_data()
+    #     x = []
+    #     for line in data.split('\n'):
+    #         if line:
+    #             d = line.strip().split(' ')
+    #             x.append(float(d[0])+float(d[1])*1.j)
+    #     return np.array(x)
 
-    def scan_gamma(self, port = None):
-        self.set_port(port)
-        return np.vectorize(self.fetch_gamma)(self.frequencies)
-
-    def data(self, array = 0):
-        self.send_command("data %d\r" % array)
-        data = self.fetch_data()
-        x = []
-        for line in data.split('\n'):
-            if line:
-                d = line.strip().split(' ')
-                x.append(float(d[0])+float(d[1])*1.j)
-        return np.array(x)
-
-    def fetch_frequencies(self):
-        self.send_command("frequencies\r")
-        data = self.fetch_data()
-        x = []
-        for line in data.split('\n'):
-            if line:
-                x.append(float(line))
-        self._frequencies = np.array(x)
+    # def fetch_frequencies(self):
+    #     self.send_command("frequencies\r")
+    #     data = self.fetch_data()
+    #     x = []
+    #     for line in data.split('\n'):
+    #         if line:
+    #             x.append(float(line))
+    #     self._frequencies = np.array(x)
 
     def send_scan(self, start = 1e6, stop = 900e6, points = None):
         if points:
@@ -184,117 +157,16 @@ class NanoVNA:
         else:
             self.send_command("scan %d %d\r"%(start, stop))
 
-    def scan(self):
-        segment_length = 101
-        array0 = []
-        array1 = []
-        if self._frequencies is None:
-            self.fetch_frequencies()
-        freqs = self._frequencies
-        while len(freqs) > 0:
-            seg_start = freqs[0]
-            seg_stop = freqs[segment_length-1] if len(freqs) >= segment_length else freqs[-1]
-            length = segment_length if len(freqs) >= segment_length else len(freqs)
-            #print((seg_start, seg_stop, length))
-            self.send_scan(seg_start, seg_stop, length)
-            array0.extend(self.data(0))
-            array1.extend(self.data(1))
-            freqs = freqs[segment_length:]
-        self.resume()
-        return (array0, array1)
-    
-    def capture(self):
-        from PIL import Image
-        self.send_command("capture\r")
-        b = self.serial.read(320 * 240 * 2)
-        x = struct.unpack(">76800H", b)
-        # convert pixel format from 565(RGB) to 8888(RGBA)
-        arr = np.array(x, dtype=np.uint32)
-        arr = 0xFF000000 + ((arr & 0xF800) >> 8) + ((arr & 0x07E0) << 5) + ((arr & 0x001F) << 19)
-        return Image.frombuffer('RGBA', (320, 240), arr, 'raw', 'RGBA', 0, 1)
-
-    def logmag(self, x):
-        pl.grid(True)
-        pl.xlim(self.frequencies[0], self.frequencies[-1])
-        pl.plot(self.frequencies, 20*np.log10(np.abs(x)))
-
-    def linmag(self, x):
-        pl.grid(True)
-        pl.xlim(self.frequencies[0], self.frequencies[-1])
-        pl.plot(self.frequencies, np.abs(x))
-
-    def phase(self, x, unwrap=False):
-        pl.grid(True)
-        a = np.angle(x)
-        if unwrap:
-            a = np.unwrap(a)
-        else:
-            pl.ylim((-180,180))
-        pl.xlim(self.frequencies[0], self.frequencies[-1])
-        pl.plot(self.frequencies, np.rad2deg(a))
-
-    def delay(self, x):
-        pl.grid(True)
-        delay = -np.unwrap(np.angle(x))/ (2*np.pi*np.array(self.frequencies))
-        pl.xlim(self.frequencies[0], self.frequencies[-1])
-        pl.plot(self.frequencies, delay)
-
-    def groupdelay(self, x):
-        pl.grid(True)
-        gd = np.convolve(np.unwrap(np.angle(x)), [1,-1], mode='same')
-        pl.xlim(self.frequencies[0], self.frequencies[-1])
-        pl.plot(self.frequencies, gd)
-
-    def vswr(self, x):
-        pl.grid(True)
-        vswr = (1+np.abs(x))/(1-np.abs(x))
-        pl.xlim(self.frequencies[0], self.frequencies[-1])
-        pl.plot(self.frequencies, vswr)
-
-    def polar(self, x):
-        ax = pl.subplot(111, projection='polar')
-        ax.grid(True)
-        ax.set_ylim((0,1))
-        ax.plot(np.angle(x), np.abs(x))
-
-    def tdr(self, x):
-        pl.grid(True)
-        window = np.blackman(len(x))
-        NFFT = 256
-        td = np.abs(np.fft.ifft(window * x, NFFT))
-        time = 1 / (self.frequencies[1] - self.frequencies[0])
-        t_axis = np.linspace(0, time, NFFT)
-        pl.plot(t_axis, td)
-        pl.xlim(0, time)
-        pl.xlabel("time (s)")
-        pl.ylabel("magnitude")
-
-    def smithd3(self, x):
-        import mpld3
-        import twoport as tp
-        fig, ax = pl.subplots()
-        sc = tp.SmithChart(show_cursor=True, labels=True, ax=ax)
-        sc.plot_s_param(a)
-        mpld3.display(fig)
-
-    def skrf_network(self, x):
-        import skrf as sk
-        n = sk.Network()
-        n.frequency = sk.Frequency.from_f(self.frequencies / 1e6, unit='mhz')
-        n.s = x
-        return n
-
-    def smith(self, x):
-        n = self.skrf_network(x)
-        n.plot_s_smith()
-        return n
-
 nv = NanoVNA(getport())
 
 class PicoGrpc(pico_vna_pb2_grpc.PicoGrpcServicer):
     def RequestData(self, request, context):
         global nv
-        return pico_vna_pb2.DataReply(data=nv.fetch_array())
+        data = nv.fetch_array()
+        # sometimes the fetch returns nothing
+        if data == []:
+            data = nv.fetch_array()
+        return pico_vna_pb2.DataReply(data=data)
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
