@@ -239,6 +239,7 @@ class NanoVNA:
     # graph1 = f.add_subplot(211)
     first = True
     def logmag(self, x):
+        print("plotting")
         if self.first:
             pl.ion()
             pl.show()
