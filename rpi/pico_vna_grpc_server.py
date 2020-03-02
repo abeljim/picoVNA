@@ -40,8 +40,6 @@ class NanoVNA:
 
         # used for clearing the serial buffer
         self.send_command("stat\r")
-        self.fetch_data()
-        self.fetch_data()
         
     @property
     def frequencies(self):
@@ -58,6 +56,7 @@ class NanoVNA:
 
     def send_command(self, cmd):
         self.open()
+        self.serial.reset_input_buffer()
         self.serial.write(cmd.encode())
         self.serial.readline() # discard empty line
 
@@ -132,24 +131,44 @@ class NanoVNA:
     def pause(self):
         self.send_command("pause\r")
     
-    # def data(self, array = 0):
-    #     self.send_command("data %d\r" % array)
-    #     data = self.fetch_data()
-    #     x = []
-    #     for line in data.split('\n'):
-    #         if line:
-    #             d = line.strip().split(' ')
-    #             x.append(float(d[0])+float(d[1])*1.j)
-    #     return np.array(x)
+    def data(self, array = 0):
+        self.send_command("data %d\r" % array)
+        data = self.fetch_data()
+        x = []
+        for line in data.split('\n'):
+            if line:
+                d = line.strip().split(' ')
+                x.append(pico_vna_pb2.DataPoint(real=float(d[0]), im=float(d[1])))
+        return x
 
-    # def fetch_frequencies(self):
-    #     self.send_command("frequencies\r")
-    #     data = self.fetch_data()
-    #     x = []
-    #     for line in data.split('\n'):
-    #         if line:
-    #             x.append(float(line))
-    #     self._frequencies = np.array(x)
+    def fetch_frequencies(self):
+        self.send_command("frequencies\r")
+        data = self.fetch_data()
+        x = []
+        for line in data.split('\n'):
+            if line:
+                x.append(float(line))
+        
+        return x
+
+    def scan(self):
+        segment_length = 101
+        array0 = []
+        array1 = []
+
+        freqs = self.fetch_frequencies()
+        while len(freqs) > 0:
+            start = freqs[0]
+            stop = freqs[min(segment_length, len(freqs))-1]
+            length = min(segment_length, len(freqs))
+
+            self.send_scan(start, stop, length)
+            array0.extend(self.data(0))
+            array1.extend(self.data(1))
+            freqs = freqs[segment_length:]
+
+        self.resume()
+        return (array0, array1)
 
     def send_scan(self, start = 1e6, stop = 900e6, points = None):
         if points:
@@ -160,13 +179,14 @@ class NanoVNA:
 nv = NanoVNA(getport())
 
 class PicoGrpc(pico_vna_pb2_grpc.PicoGrpcServicer):
-    def RequestData(self, request, context):
+    def RequestScan(self, request, context):
         global nv
-        data = nv.fetch_array()
-        # sometimes the fetch returns nothing
-        while data == []:
-            data = nv.fetch_array()
-        return pico_vna_pb2.DataReply(data=data)
+        # data = nv.fetch_array()
+        # # sometimes the fetch returns nothing
+        # while data == []:
+        #     data = nv.fetch_array()
+        data = nv.scan()
+        return pico_vna_pb2.ScanReply(freqs=nv.fetch_frequencies(), s11_data=data[0], s21_data=data[1])
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))

@@ -14,10 +14,10 @@ class PicoGrpcStub(object):
     Args:
       channel: A grpc.Channel.
     """
-    self.RequestData = channel.unary_unary(
-        '/picogrpc.PicoGrpc/RequestData',
-        request_serializer=pico__vna__pb2.DataRequest.SerializeToString,
-        response_deserializer=pico__vna__pb2.DataReply.FromString,
+    self.RequestScan = channel.unary_unary(
+        '/picogrpc.PicoGrpc/RequestScan',
+        request_serializer=pico__vna__pb2.ScanRequest.SerializeToString,
+        response_deserializer=pico__vna__pb2.ScanReply.FromString,
         )
 
 
@@ -25,7 +25,7 @@ class PicoGrpcServicer(object):
   # missing associated documentation comment in .proto file
   pass
 
-  def RequestData(self, request, context):
+  def RequestScan(self, request, context):
     # missing associated documentation comment in .proto file
     pass
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -35,10 +35,10 @@ class PicoGrpcServicer(object):
 
 def add_PicoGrpcServicer_to_server(servicer, server):
   rpc_method_handlers = {
-      'RequestData': grpc.unary_unary_rpc_method_handler(
-          servicer.RequestData,
-          request_deserializer=pico__vna__pb2.DataRequest.FromString,
-          response_serializer=pico__vna__pb2.DataReply.SerializeToString,
+      'RequestScan': grpc.unary_unary_rpc_method_handler(
+          servicer.RequestScan,
+          request_deserializer=pico__vna__pb2.ScanRequest.FromString,
+          response_serializer=pico__vna__pb2.ScanReply.SerializeToString,
       ),
   }
   generic_handler = grpc.method_handlers_generic_handler(

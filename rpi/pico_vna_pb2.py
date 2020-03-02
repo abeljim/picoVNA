@@ -17,8 +17,8 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='pico_vna.proto',
   package='picogrpc',
   syntax='proto3',
-  serialized_options=b'\242\002\003HLW',
-  serialized_pb=b'\n\x0epico_vna.proto\x12\x08picogrpc\"%\n\tDataPoint\x12\x0c\n\x04real\x18\x01 \x01(\x02\x12\n\n\x02im\x18\x02 \x01(\x02\"\r\n\x0b\x44\x61taRequest\".\n\tDataReply\x12!\n\x04\x64\x61ta\x18\x01 \x03(\x0b\x32\x13.picogrpc.DataPoint2G\n\x08PicoGrpc\x12;\n\x0bRequestData\x12\x15.picogrpc.DataRequest\x1a\x13.picogrpc.DataReply\"\x00\x42\x06\xa2\x02\x03HLWb\x06proto3'
+  serialized_options=None,
+  serialized_pb=b'\n\x0epico_vna.proto\x12\x08picogrpc\"%\n\tDataPoint\x12\x0c\n\x04real\x18\x01 \x01(\x02\x12\n\n\x02im\x18\x02 \x01(\x02\"*\n\x0bScanRequest\x12\r\n\x05start\x18\x01 \x01(\x05\x12\x0c\n\x04stop\x18\x02 \x01(\x05\"h\n\tScanReply\x12\r\n\x05\x66reqs\x18\x01 \x03(\x02\x12%\n\x08s11_data\x18\x02 \x03(\x0b\x32\x13.picogrpc.DataPoint\x12%\n\x08s21_data\x18\x03 \x03(\x0b\x32\x13.picogrpc.DataPoint2G\n\x08PicoGrpc\x12;\n\x0bRequestScan\x12\x15.picogrpc.ScanRequest\x1a\x13.picogrpc.ScanReply\"\x00\x62\x06proto3'
 )
 
 
@@ -62,13 +62,27 @@ _DATAPOINT = _descriptor.Descriptor(
 )
 
 
-_DATAREQUEST = _descriptor.Descriptor(
-  name='DataRequest',
-  full_name='picogrpc.DataRequest',
+_SCANREQUEST = _descriptor.Descriptor(
+  name='ScanRequest',
+  full_name='picogrpc.ScanRequest',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
+    _descriptor.FieldDescriptor(
+      name='start', full_name='picogrpc.ScanRequest.start', index=0,
+      number=1, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='stop', full_name='picogrpc.ScanRequest.stop', index=1,
+      number=2, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -82,20 +96,34 @@ _DATAREQUEST = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=67,
-  serialized_end=80,
+  serialized_end=109,
 )
 
 
-_DATAREPLY = _descriptor.Descriptor(
-  name='DataReply',
-  full_name='picogrpc.DataReply',
+_SCANREPLY = _descriptor.Descriptor(
+  name='ScanReply',
+  full_name='picogrpc.ScanReply',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='data', full_name='picogrpc.DataReply.data', index=0,
-      number=1, type=11, cpp_type=10, label=3,
+      name='freqs', full_name='picogrpc.ScanReply.freqs', index=0,
+      number=1, type=2, cpp_type=6, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='s11_data', full_name='picogrpc.ScanReply.s11_data', index=1,
+      number=2, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='s21_data', full_name='picogrpc.ScanReply.s21_data', index=2,
+      number=3, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -112,14 +140,15 @@ _DATAREPLY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=82,
-  serialized_end=128,
+  serialized_start=111,
+  serialized_end=215,
 )
 
-_DATAREPLY.fields_by_name['data'].message_type = _DATAPOINT
+_SCANREPLY.fields_by_name['s11_data'].message_type = _DATAPOINT
+_SCANREPLY.fields_by_name['s21_data'].message_type = _DATAPOINT
 DESCRIPTOR.message_types_by_name['DataPoint'] = _DATAPOINT
-DESCRIPTOR.message_types_by_name['DataRequest'] = _DATAREQUEST
-DESCRIPTOR.message_types_by_name['DataReply'] = _DATAREPLY
+DESCRIPTOR.message_types_by_name['ScanRequest'] = _SCANREQUEST
+DESCRIPTOR.message_types_by_name['ScanReply'] = _SCANREPLY
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 DataPoint = _reflection.GeneratedProtocolMessageType('DataPoint', (_message.Message,), {
@@ -129,22 +158,21 @@ DataPoint = _reflection.GeneratedProtocolMessageType('DataPoint', (_message.Mess
   })
 _sym_db.RegisterMessage(DataPoint)
 
-DataRequest = _reflection.GeneratedProtocolMessageType('DataRequest', (_message.Message,), {
-  'DESCRIPTOR' : _DATAREQUEST,
+ScanRequest = _reflection.GeneratedProtocolMessageType('ScanRequest', (_message.Message,), {
+  'DESCRIPTOR' : _SCANREQUEST,
   '__module__' : 'pico_vna_pb2'
-  # @@protoc_insertion_point(class_scope:picogrpc.DataRequest)
+  # @@protoc_insertion_point(class_scope:picogrpc.ScanRequest)
   })
-_sym_db.RegisterMessage(DataRequest)
+_sym_db.RegisterMessage(ScanRequest)
 
-DataReply = _reflection.GeneratedProtocolMessageType('DataReply', (_message.Message,), {
-  'DESCRIPTOR' : _DATAREPLY,
+ScanReply = _reflection.GeneratedProtocolMessageType('ScanReply', (_message.Message,), {
+  'DESCRIPTOR' : _SCANREPLY,
   '__module__' : 'pico_vna_pb2'
-  # @@protoc_insertion_point(class_scope:picogrpc.DataReply)
+  # @@protoc_insertion_point(class_scope:picogrpc.ScanReply)
   })
-_sym_db.RegisterMessage(DataReply)
+_sym_db.RegisterMessage(ScanReply)
 
 
-DESCRIPTOR._options = None
 
 _PICOGRPC = _descriptor.ServiceDescriptor(
   name='PicoGrpc',
@@ -152,16 +180,16 @@ _PICOGRPC = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
-  serialized_start=130,
-  serialized_end=201,
+  serialized_start=217,
+  serialized_end=288,
   methods=[
   _descriptor.MethodDescriptor(
-    name='RequestData',
-    full_name='picogrpc.PicoGrpc.RequestData',
+    name='RequestScan',
+    full_name='picogrpc.PicoGrpc.RequestScan',
     index=0,
     containing_service=None,
-    input_type=_DATAREQUEST,
-    output_type=_DATAREPLY,
+    input_type=_SCANREQUEST,
+    output_type=_SCANREPLY,
     serialized_options=None,
   ),
 ])
