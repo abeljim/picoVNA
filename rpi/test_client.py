@@ -45,19 +45,22 @@ class NanoVNA:
         self._frequencies = np.linspace(start, stop, self.points)
 
     def open(self):
-        if self.serial is None:
-            self.serial = serial.Serial(self.dev)
+        pass
+        # if self.serial is None:
+        #     self.serial = serial.Serial(self.dev)
 
     def close(self):
-        if self.serial:
-            self.serial.close()
-        self.serial = None
+        pass
+        # if self.serial:
+        #     self.serial.close()
+        # self.serial = None
 
     def send_command(self, cmd):
-        self.open()
-        self.serial.reset_input_buffer()
-        self.serial.write(cmd.encode())
-        self.serial.readline() # discard empty line
+        pass
+        # self.open()
+        # self.serial.reset_input_buffer()
+        # self.serial.write(cmd.encode())
+        # self.serial.readline() # discard empty line
 
     def set_sweep(self, start, stop):
         if start is not None:
