@@ -242,6 +242,7 @@ class NanoVNA:
         if self.first:
             pl.ion()
             pl.show()
+            self.first = False
         pl.clf()
         pl.plot(self.frequencies, 20*np.log10(np.abs(x)))
         pl.draw()
