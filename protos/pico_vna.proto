@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package picogrpc;
+
+service PicoGrpc {
+    rpc RequestScan (ScanRequest) returns (ScanReply) {}
+    // rpc RequestFrequency (FrequencyRequest) returns (FrequencyReply) {}
+}
+
+message DataPoint {
+    float real = 1;
+    float im = 2;
+}
+
+// message FrequencyRequest {}
+
+// message FrequencyReply {
+//     repeated float freqs = 1;
+// }
+
+// default is a full scan
+message ScanRequest {
+    int32 start = 1; 
+    int32 stop = 2;
+}
+
+message ScanReply {
+    repeated float freqs = 1;
+    repeated DataPoint s11_data = 2;
+    repeated DataPoint s21_data = 3;
+}
