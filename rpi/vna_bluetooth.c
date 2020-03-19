@@ -45,7 +45,7 @@
 #include "src/shared/gatt-server.h"
 
 #include "vna_service.h"
-#include "vna_device.h"
+#include "vna_device.hpp"
 #include "vna_bluetooth_info.h"
 
 #define UUID_GAP			0x1800
