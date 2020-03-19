@@ -38,11 +38,11 @@ CXX := g++
 LD := g++
 
 # C flags
-CFLAGS := -std=c99 -I. -I$(bluez_dir)
+CFLAGS := -std=c99
 # C++ flags
 CXXFLAGS := -std=c++14
 # C/C++ flags
-CPPFLAGS := -g -Wall -Wextra -pedantic
+CPPFLAGS := -g -Wall -I. -I$(bluez_dir)
 
 # linker flags
 USB_LDFLAGS := -lserialport
