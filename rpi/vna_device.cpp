@@ -1,6 +1,6 @@
-#include "vna_device.h"
+#include "vna_device.hpp"
 
-#include <string.h>
+#include <string>
 #include <unistd.h>
 
 #define VNA_VID 0x0483
@@ -69,18 +69,15 @@ void destroy_vna_device(VNADevice* vna)
 
 bool send_cmd_vna_device(VNADevice* vna, const char* cmd)
 {
-    const size_t temp_cmd_size = strlen(cmd) + 2;
-    char* temp_cmd = malloc(temp_cmd_size);
+    std::string temp_cmd(cmd);
+    temp_cmd += "\r";
 
-    snprintf(temp_cmd, temp_cmd_size, "%s\r", cmd);
-    if(sp_blocking_write(vna->port, temp_cmd, temp_cmd_size, 0) < 0)
+    if(sp_blocking_write(vna->port, temp_cmd.c_str(), temp_cmd.size(), 0) < 0)
     {
         printf("error writing to vna\n");
-        free(temp_cmd);
         return false;
     }
     sp_drain(vna->port);
-    free(temp_cmd);
     return true;
 }
 
@@ -94,7 +91,7 @@ void read_data_vna_device(VNADevice* vna, char **buf, size_t* count)
     }
 
     size_t bufSize = 100;
-    char* tempBuf = malloc(bufSize);
+    auto tempBuf = static_cast<char*>(malloc(bufSize));
     size_t cnt = 0;
 
     while(sp_blocking_read(vna->port, tempBuf + cnt, 1, 10))
@@ -103,7 +100,7 @@ void read_data_vna_device(VNADevice* vna, char **buf, size_t* count)
         if(cnt == bufSize)
         {
             bufSize += 100;
-            tempBuf = realloc(tempBuf, bufSize);
+            tempBuf = static_cast<char*>(realloc(tempBuf, bufSize));
         }
     }
 
@@ -124,7 +121,7 @@ void read_data_vna_device(VNADevice* vna, char **buf, size_t* count)
     // trim the first line received as well as the shell prompt at the end
     char* tmp = tempBuf;
     const size_t new_buf_size = cnt - (first_line_len + 1) - shell_prompt_len + 1;
-    tempBuf = malloc(new_buf_size);
+    tempBuf = static_cast<char*>(malloc(new_buf_size));
     snprintf(tempBuf, new_buf_size, "%s", tmp + first_line_len + 1);
     free(tmp);
     *count = new_buf_size;

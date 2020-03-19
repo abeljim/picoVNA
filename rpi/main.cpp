@@ -8,12 +8,12 @@
 #include <errno.h>
 #include <assert.h>
 
-// #define USB_ONLY
+#define USB_ONLY
 
 #ifndef USB_ONLY
 #include "vna_bluetooth.h"
 #endif
-#include "vna_device.h"
+#include "vna_device.hpp"
 
 int main()
 {

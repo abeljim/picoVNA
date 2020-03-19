@@ -1,11 +1,11 @@
 /**
- * @file vna_device.h
+ * @file vna_device.hpp
  * @author Khoi Trinh
  * @brief Represent a vna usb device, used for sending/receiving data through com port
  * 
  */
-#ifndef _VNA_DEVICE_H
-#define _VNA_DEVICE_H
+#ifndef _VNA_DEVICE_HPP
+#define _VNA_DEVICE_HPP
 
 #include <libserialport.h>
 #include <stdio.h>
@@ -36,4 +36,4 @@ bool send_cmd_vna_device(VNADevice* vna, const char* cmd);
  */
 void read_data_vna_device(VNADevice* vna, char **buf, size_t* count);
 
-#endif // ! _VNA_DEVICE_H
+#endif // ! _VNA_DEVICE_HPP

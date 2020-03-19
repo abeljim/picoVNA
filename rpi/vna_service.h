@@ -8,12 +8,15 @@
 
 #ifndef _VNA_SERVICE_H
 #define _VNA_SERVICE_H
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include <stdint.h>
 #include <stdio.h>
 #include <stdbool.h>
 
-#include "vna_device.h"
+#include "vna_device.hpp"
 
 // forward declaration since bluez include files is a mess
 struct gatt_db;
@@ -37,4 +40,7 @@ void init_vna_service(VNAService *vna, struct bt_gatt_server* gatt, VNADevice* v
 void destroy_vna_service(VNAService *vna);
 void populate_vna_service(VNAService *vna, struct gatt_db *db);
 
+#ifdef __cplusplus
+}
+#endif
 #endif // !_VNA_SERVICE_H
